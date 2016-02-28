@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Practical-machine-learning by andratolbus</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Practical-machine-learning</h1>
+      <h2 class="project-tagline">Final Assignment</h2>
+      <a href="https://github.com/andratolbus/Practical-Machine-Learning" class="btn">View on GitHub</a>
+      <a href="https://github.com/andratolbus/Practical-Machine-Learning/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/andratolbus/Practical-Machine-Learning/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <p></p>
+
+<p></p>
+
+
+
+<p>
+</p>
+
+
+
+
+
+
+
+code{white-space: pre;}
+
+<p></p>
+
+
+
+
+  pre:not([class]) {
+    background-color: white;
+  }
+
+
+
+
+<p></p>
+
+<p></p>
+
+<div>
+
+
+<div id="header">
+<h1>
+<a id="predicting-wellness-of-physical-exercise-weight-lifting" class="anchor" href="#predicting-wellness-of-physical-exercise-weight-lifting" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Predicting wellness of physical exercise (weight lifting)</h1>
+<h4>
+<a id="andra" class="anchor" href="#andra" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><em>Andra</em>
+</h4>
+<h4>
+<a id="28-feb-2016" class="anchor" href="#28-feb-2016" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><em>28 Feb 2016</em>
+</h4>
+</div>
+
+<div id="background">
+<h1>
+<a id="background" class="anchor" href="#background" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Background</h1>
+<p>Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: <a href="http://groupware.les.inf.puc-rio.br/har">http://groupware.les.inf.puc-rio.br/har</a> (see the section on the Weight Lifting Exercise Dataset).</p>
+<div id="scope">
+<h2>
+<a id="scope" class="anchor" href="#scope" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Scope</h2>
+<p>The main purpose of this project is to model how well individuals are exercising and to predict using the model how well new individuals will train using weights. The outcome (classe in our dataset) that we are trying to predict can take 5 values : A, B, C, D and E.</p>
+</div>
+
+<div id="data-used">
+<h2>
+<a id="data-used" class="anchor" href="#data-used" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Data Used</h2>
+<p>The data for this project come from this source: <a href="http://groupware.les.inf.puc-rio.br/har">http://groupware.les.inf.puc-rio.br/har</a>.</p>
+<p>The training data for this project are available here:</p>
+<p><a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv</a></p>
+<p>The test data are available here:</p>
+<p><a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv</a></p>
+<pre><code>trainUrl &lt;- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl &lt;- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+#reading training and testing data and marking NA or empty fields as NA 
+training &lt;- read.csv(url(trainUrl), na.strings=c("NA",""," "))
+testing &lt;- read.csv(url(testUrl), na.strings=c("NA"," ",""))
+
+dim(training)</code></pre>
+<pre><code>## [1] 19622   160</code></pre>
+<pre><code>dim(testing)</code></pre>
+<pre><code>## [1]  20 160</code></pre>
+</div>
+
+<div id="data-cleaning">
+<h2>
+<a id="data-cleaning" class="anchor" href="#data-cleaning" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Data Cleaning</h2>
+<pre><code>noofnas&lt;-apply(training, 2, function(x) length(which(is.na(x)))) # calculating the number of NA variables for each column
+threshold&lt;-0.7*nrow(training) # set threshold for variables to be removed: variables that have more than 70% NAs across all observations
+
+noofnas&lt;-subset(noofnas,noofnas&lt;=threshold) # removing variables that do not fulfill condition above from our vector
+
+training&lt;-training[,names(noofnas)] # removing the variables that do not fulfill the % of NA condition
+dim(training)</code></pre>
+<pre><code>## [1] 19622    60</code></pre>
+<pre><code>timestamps.columns&lt;-names(training)[3:5] # removing timestamps from model; timestamp is not a valid variable for predicting the wellness of exercise ; an option would be to actually create a time of the day variable (categorical) to see how well the time of the day affects the wellness 
+
+training&lt;-training[, -which(names(training) %in% c("X","user_name", timestamps.columns))] 
+dim(training)</code></pre>
+<pre><code>## [1] 19622    55</code></pre>
+<pre><code>temp&lt;- training[, -which(names(training) %in% c("X","user_name","classe"))] # creating temp data frame to extract relevant columns from testing set 
+testing&lt;-testing[,c(names(temp),"problem_id")]
+
+dim(testing)</code></pre>
+<pre><code>## [1] 20 55</code></pre>
+<p>Next, we need to make sure that the type (class) for each of the variables in the two data frames (training and testing) are the same . We consider data until length-1, as the last element is the prediction class and problem_id respectively . In order to do that, we are sorting the columns from the two datasets and then compare the types for each of the columns. For the ones that are different, we assign the right type. This will ensure that we will not have any unpleasant suprises when running the algorithms.</p>
+<pre><code>temp&lt;-training[, 1:ncol(training)-1]
+temp&lt;-temp[, order(names(temp))]
+training&lt;-cbind(temp, training$classe)
+colnames(training)[length(training)]&lt;-"classe"
+
+
+temp&lt;-testing[, 1:ncol(testing)-1]
+temp&lt;-temp[, order(names(temp))]
+testing&lt;-cbind(temp, testing$problem_id)
+colnames(testing)[length(testing)]&lt;-"problem_id"
+
+
+classes.testing&lt;-lapply(testing,class)
+classes.training&lt;-lapply(training,class)
+
+classes.testing&lt;-unlist(classes.testing)
+classes.training&lt;-unlist(classes.training)
+
+test.class&lt;-classes.testing[1:length(classes.testing)-1]==classes.training[1:length(classes.training)-1]
+dif&lt;-names(test.class[test.class==FALSE])
+
+print(dif)</code></pre>
+<pre><code>## [1] "magnet_dumbbell_z" "magnet_forearm_y"  "magnet_forearm_z"</code></pre>
+<pre><code>## there are 3 columns with a different type in the training set compared to the testing set 
+##separate test has showed that the columns in the testing set are "integer", whereas in the training set they are numeric
+#we thus assign the right type 
+
+for (i in 1: length(dif))
+   class(training[,dif[i]])&lt;-"integer"</code></pre>
+</div>
+
+<p></p>
+</div>
+
+<div id="partitioning-training-data-set">
+<h1>
+<a id="partitioning-training-data-set" class="anchor" href="#partitioning-training-data-set" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Partitioning training data set</h1>
+<p>Further, we are partitioning our training data set into training set (60%) for fitting the model and testing set (40%) for testing our model .</p>
+<pre><code>library(caret)
+library(rattle)
+library(rpart)
+library(rpart.plot)
+library (MASS)
+library(pgmm)
+library(randomForest)
+library(e1071)
+library(kernlab)</code></pre>
+<pre><code>inTrain &lt;- createDataPartition(y=training$classe, p=0.6, list=FALSE)
+training.new &lt;- training[inTrain, ]
+testing.new &lt;- training[-inTrain, ]
+dim(training.new)</code></pre>
+<pre><code>## [1] 11776    55</code></pre>
+<pre><code>dim(testing.new)</code></pre>
+<pre><code>## [1] 7846   55</code></pre>
+<pre><code>levels(testing$new_window ) &lt;- levels(training.new$new_window) #ensure the same levels for the factor variables</code></pre>
+</div>
+
+<div id="prediction-with-random-forrest">
+<h1>
+<a id="prediction-with-random-forrest" class="anchor" href="#prediction-with-random-forrest" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Prediction with Random Forrest</h1>
+<pre><code>set.seed(12345)
+
+# Fitting the model 
+rf &lt;- randomForest(classe ~ ., data=training.new, method="class")
+
+
+# testing the model on our prediction data set 
+
+mypredictions&lt;- predict(rf,  testing.new, type = "class")
+
+# Results from testing the model : predicted versus observed 
+cfx&lt;-confusionMatrix(mypredictions, testing.new$classe)
+cfx</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 2232    3    0    0    0
+##          B    0 1510    4    0    0
+##          C    0    5 1364   11    0
+##          D    0    0    0 1274    6
+##          E    0    0    0    1 1436
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9962          
+##                  95% CI : (0.9945, 0.9974)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.9952          
+##  Mcnemar's Test P-Value : NA              
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            1.0000   0.9947   0.9971   0.9907   0.9958
+## Specificity            0.9995   0.9994   0.9975   0.9991   0.9998
+## Pos Pred Value         0.9987   0.9974   0.9884   0.9953   0.9993
+## Neg Pred Value         1.0000   0.9987   0.9994   0.9982   0.9991
+## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+## Detection Rate         0.2845   0.1925   0.1738   0.1624   0.1830
+## Detection Prevalence   0.2849   0.1930   0.1759   0.1631   0.1832
+## Balanced Accuracy      0.9997   0.9970   0.9973   0.9949   0.9978</code></pre>
+<pre><code>plot(rf, main="Random Forest Fit")</code></pre>
+<p><img title alt width="672"></p>
+<div id="results">
+<h2>
+<a id="results-" class="anchor" href="#results-" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Results :</h2>
+<pre><code>cfx$overall</code></pre>
+<pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+##      0.9961764      0.9951634      0.9945460      0.9974188      0.2844762 
+## AccuracyPValue  McnemarPValue 
+##      0.0000000            NaN</code></pre>
+</div>
+
+<p></p>
+</div>
+
+<div id="prediction-with-support-vector-machines">
+<h1>
+<a id="prediction-with-support-vector-machines" class="anchor" href="#prediction-with-support-vector-machines" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Prediction with Support Vector Machines</h1>
+<pre><code>set.seed(12345)
+# Fitting the model 
+sv &lt;- svm(classe ~ ., data=training.new, method="class")
+
+
+# testing the model on our prediction data set 
+
+mypredictions&lt;- predict(sv,  testing.new, type = "class")
+
+# Results from testing the model : predicted versus observed 
+cfx&lt;-confusionMatrix(mypredictions, testing.new$classe)
+cfx</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 2195  117    1    0    0
+##          B   16 1354   55    0   10
+##          C   18   38 1294  129   35
+##          D    1    2   17 1155   42
+##          E    2    7    1    2 1355
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9372          
+##                  95% CI : (0.9316, 0.9424)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.9204          
+##  Mcnemar's Test P-Value : &lt; 2.2e-16       
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9834   0.8920   0.9459   0.8981   0.9397
+## Specificity            0.9790   0.9872   0.9660   0.9905   0.9981
+## Pos Pred Value         0.9490   0.9436   0.8547   0.9491   0.9912
+## Neg Pred Value         0.9933   0.9744   0.9883   0.9802   0.9866
+## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+## Detection Rate         0.2798   0.1726   0.1649   0.1472   0.1727
+## Detection Prevalence   0.2948   0.1829   0.1930   0.1551   0.1742
+## Balanced Accuracy      0.9812   0.9396   0.9560   0.9443   0.9689</code></pre>
+<div id="results-1">
+<h2>
+<a id="results--1" class="anchor" href="#results--1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Results :</h2>
+<pre><code>cfx$overall</code></pre>
+<pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+##   9.371654e-01   9.204285e-01   9.315679e-01   9.424355e-01   2.844762e-01 
+## AccuracyPValue  McnemarPValue 
+##   0.000000e+00   4.963538e-49</code></pre>
+</div>
+
+<p></p>
+</div>
+
+<div id="prediction-with-regression-trees">
+<h1>
+<a id="prediction-with-regression-trees" class="anchor" href="#prediction-with-regression-trees" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Prediction with Regression Trees</h1>
+<pre><code>set.seed(12345)
+# Fitting the model 
+rp &lt;- rpart(classe ~ ., data=training.new, method="class")
+
+# testing the model on our prediction data set 
+
+mypredictions&lt;- predict(rp,  testing.new, type = "class")
+
+# Results from testing the model : predicted versus observed 
+cfx&lt;-confusionMatrix(mypredictions, testing.new$classe)
+cfx</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1968  232   23   81   31
+##          B  122 1018  119  104   60
+##          C    0   83 1099   43    4
+##          D   92   78  111  979  108
+##          E   50  107   16   79 1239
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.8033          
+##                  95% CI : (0.7944, 0.8121)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.7509          
+##  Mcnemar's Test P-Value : &lt; 2.2e-16       
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.8817   0.6706   0.8034   0.7613   0.8592
+## Specificity            0.9346   0.9360   0.9799   0.9407   0.9606
+## Pos Pred Value         0.8428   0.7154   0.8942   0.7156   0.8310
+## Neg Pred Value         0.9521   0.9222   0.9593   0.9526   0.9681
+## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+## Detection Rate         0.2508   0.1297   0.1401   0.1248   0.1579
+## Detection Prevalence   0.2976   0.1814   0.1566   0.1744   0.1900
+## Balanced Accuracy      0.9082   0.8033   0.8916   0.8510   0.9099</code></pre>
+<pre><code># View our tree
+fancyRpartPlot(rp)</code></pre>
+<pre><code>## Warning: labs do not fit even at cex 0.15, there may be some overplotting</code></pre>
+<p><img title alt width="672"></p>
+<div id="results-2">
+<h2>
+<a id="results--2" class="anchor" href="#results--2" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Results :</h2>
+<pre><code>cfx$overall</code></pre>
+<pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+##   8.033393e-01   7.508839e-01   7.943686e-01   8.120840e-01   2.844762e-01 
+## AccuracyPValue  McnemarPValue 
+##   0.000000e+00   1.569713e-22</code></pre>
+</div>
+
+<p></p>
+</div>
+
+<div id="conclusion">
+<h1>
+<a id="conclusion" class="anchor" href="#conclusion" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Conclusion</h1>
+<p>By looking at the accuracy values for the three models, we can conclude that for this data set Random Forest (99%) has performed the best, followed closely by SVM (Accuracy 95%). The accuracy for the regression tree model has an accuracy of only approximately 80%. The expect out of sample error for Random Trees is 100-99.77=0.23%</p>
+</div>
+
+<div id="test-on-the-prediction-data-set">
+<h1>
+<a id="test-on-the-prediction-data-set" class="anchor" href="#test-on-the-prediction-data-set" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Test on the prediction data set</h1>
+<pre><code>predict(rf,  testing, type = "class")</code></pre>
+<pre><code>##  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
+##  B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
+## Levels: A B C D E</code></pre>
+</div>
+
+<p></p>
+</div>
+
+
+
+
+
+
+
+<p>
+</p>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/andratolbus/Practical-Machine-Learning">Practical-machine-learning</a> is maintained by <a href="https://github.com/andratolbus">andratolbus</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
