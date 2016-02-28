@@ -1,0 +1,247 @@
+---
+title: "Predicting wellness of physical exercise (weight lifting)"
+author: "Andra"
+date: "28 Feb 2016"
+output: pdf_document
+---
+#Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Scope
+
+The main purpose of this project is to model how well individuals are exercising and to predict using the model how well new individuals will train using weights.
+The outcome (classe in our dataset) that we are trying to predict can take 5 values : A, B, C, D and E. 
+
+
+## Data Used 
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. 
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+
+```{r echo=TRUE}
+
+
+trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+#reading training and testing data and marking NA or empty fields as NA 
+training <- read.csv(url(trainUrl), na.strings=c("NA",""," "))
+testing <- read.csv(url(testUrl), na.strings=c("NA"," ",""))
+
+dim(training)
+dim(testing)
+
+
+```
+
+## Data Cleaning ## 
+
+```{r}
+
+noofnas<-apply(training, 2, function(x) length(which(is.na(x)))) # calculating the number of NA variables for each column
+threshold<-0.7*nrow(training) # set threshold for variables to be removed: variables that have more than 70% NAs across all observations
+
+noofnas<-subset(noofnas,noofnas<=threshold) # removing variables that do not fulfill condition above from our vector
+
+training<-training[,names(noofnas)] # removing the variables that do not fulfill the % of NA condition
+dim(training)
+
+
+timestamps.columns<-names(training)[3:5] # removing timestamps from model; timestamp is not a valid variable for predicting the wellness of exercise ; an option would be to actually create a time of the day variable (categorical) to see how well the time of the day affects the wellness 
+
+training<-training[, -which(names(training) %in% c("X","user_name", timestamps.columns))] 
+dim(training)
+temp<- training[, -which(names(training) %in% c("X","user_name","classe"))] # creating temp data frame to extract relevant columns from testing set 
+testing<-testing[,c(names(temp),"problem_id")]
+
+dim(testing)
+
+```
+
+Next, we need to make sure that the type (class) for each of the variables in the two data frames (training and testing) are the same . We consider data until length-1, as the last element is the prediction class and problem_id respectively .
+In order to do that, we are sorting the columns from the two datasets and then compare the types for each of the columns. 
+For the ones that are different, we assign the right type.
+This will ensure that we will not have any unpleasant suprises when running the algorithms. 
+
+
+
+```{r}
+
+temp<-training[, 1:ncol(training)-1]
+temp<-temp[, order(names(temp))]
+training<-cbind(temp, training$classe)
+colnames(training)[length(training)]<-"classe"
+
+
+temp<-testing[, 1:ncol(testing)-1]
+temp<-temp[, order(names(temp))]
+testing<-cbind(temp, testing$problem_id)
+colnames(testing)[length(testing)]<-"problem_id"
+
+
+classes.testing<-lapply(testing,class)
+classes.training<-lapply(training,class)
+
+classes.testing<-unlist(classes.testing)
+classes.training<-unlist(classes.training)
+
+test.class<-classes.testing[1:length(classes.testing)-1]==classes.training[1:length(classes.training)-1]
+dif<-names(test.class[test.class==FALSE])
+
+print(dif)
+
+## there are 3 columns with a different type in the training set compared to the testing set 
+##separate test has showed that the columns in the testing set are "integer", whereas in the training set they are numeric
+#we thus assign the right type 
+
+for (i in 1: length(dif))
+   class(training[,dif[i]])<-"integer"
+
+
+
+   
+```
+
+# Partitioning training data set 
+
+Further, we are partitioning our training data set into training set (60%) for fitting the model and testing set (40%) for testing our model .
+
+
+```{r  message=FALSE, warning=FALSE}
+library(caret)
+library(rattle)
+library(rpart)
+library(rpart.plot)
+library (MASS)
+library(pgmm)
+library(randomForest)
+library(e1071)
+library(kernlab)
+```
+
+
+```{r echo=TRUE}
+
+
+inTrain <- createDataPartition(y=training$classe, p=0.6, list=FALSE)
+training.new <- training[inTrain, ]
+testing.new <- training[-inTrain, ]
+dim(training.new)
+dim(testing.new)
+
+levels(testing$new_window ) <- levels(training.new$new_window) #ensure the same levels for the factor variables
+
+```
+
+
+# Prediction with Random Forrest 
+
+
+```{r echo=TRUE}
+set.seed(12345)
+
+# Fitting the model 
+rf <- randomForest(classe ~ ., data=training.new, method="class")
+
+
+# testing the model on our prediction data set 
+
+mypredictions<- predict(rf,  testing.new, type = "class")
+
+# Results from testing the model : predicted versus observed 
+cfx<-confusionMatrix(mypredictions, testing.new$classe)
+cfx
+plot(rf, main="Random Forest Fit")
+
+
+```
+
+## Results :
+
+```{r}
+cfx$overall
+
+```
+
+
+
+# Prediction with Support Vector Machines
+
+```{r}
+
+set.seed(12345)
+# Fitting the model 
+sv <- svm(classe ~ ., data=training.new, method="class")
+
+
+# testing the model on our prediction data set 
+
+mypredictions<- predict(sv,  testing.new, type = "class")
+
+# Results from testing the model : predicted versus observed 
+cfx<-confusionMatrix(mypredictions, testing.new$classe)
+cfx
+
+```
+## Results :
+
+```{r}
+cfx$overall
+
+```
+
+
+
+# Prediction with Regression Trees
+
+```{r message=FALSE}
+
+set.seed(12345)
+# Fitting the model 
+rp <- rpart(classe ~ ., data=training.new, method="class")
+
+# testing the model on our prediction data set 
+
+mypredictions<- predict(rp,  testing.new, type = "class")
+
+# Results from testing the model : predicted versus observed 
+cfx<-confusionMatrix(mypredictions, testing.new$classe)
+cfx
+
+# View our tree
+fancyRpartPlot(rp)
+
+```
+
+## Results :
+
+```{r}
+cfx$overall
+
+```
+
+# Conclusion
+
+By looking at the accuracy values for the three models, we can conclude that for this data set Random Forest (99%) has performed the best, followed closely by SVM  (Accuracy 95%). The accuracy for the regression tree model has an accuracy of only approximately 80%.
+The expect out of sample error for Random Trees is 100-99.77=0.23%
+
+
+# Test on the prediction data set 
+
+```{r}
+
+predict(rf,  testing, type = "class")
+
+```
+
+
